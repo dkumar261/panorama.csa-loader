@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:batch="http://www.springframework.org/schema/batch" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-3.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.0.xsd">
+
+<!-- 	<context:property-placeholder location="environment-dev.properties" /> -->
+	<bean id="jobRepository"
+		class="org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean">
+		<property name="transactionManager">
+			<bean
+				class="org.springframework.batch.support.transaction.ResourcelessTransactionManager" />
+		</property>
+	</bean>
+	<bean id="jobOperator"
+		class="org.springframework.batch.core.launch.support.SimpleJobOperator">
+		<property name="jobExplorer" ref="jobExplorer" />
+		<property name="jobRepository" ref="jobRepository" />
+		<property name="jobRegistry" ref="jobRegistry" />
+		<property name="jobLauncher" ref="jobLauncher" />
+	</bean>
+	<bean id="jobExplorer"
+		class="org.springframework.batch.core.explore.support.MapJobExplorerFactoryBean">
+		<property name="repositoryFactory" ref="&amp;jobRepository" />
+	</bean>
+	<bean
+		class="org.springframework.batch.core.configuration.support.JobRegistryBeanPostProcessor">
+		<property name="jobRegistry" ref="jobRegistry" />
+	</bean>
+	<bean id="jobLauncher"
+		class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+		<property name="jobRepository" ref="jobRepository" />
+	</bean>
+	<bean id="jobRegistry"
+		class="org.springframework.batch.core.configuration.support.MapJobRegistry" />
+
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"
+		destroy-method="close">
+		<property name="driverClassName" value="com.ibm.db2.jcc.DB2Driver" />
+		<property name="url" value="${opt.dev.database.url}" />
+		<property name="username" value="${opt.dev.db.user}" />
+		<property name="password" value="${opt.dev.db.pwd}" />
+		<property name="maxIdle" value="10" />
+		<property name="maxActive" value="100" />
+		<property name="maxWait" value="10000" />
+		<property name="defaultAutoCommit" value="false" />
+	</bean>
+
+	<!-- This is datasource configuration for uniA database -->
+<!-- 	<bean id="dataSourceUnia" class="org.apache.commons.dbcp.BasicDataSource" -->
+<!-- 		destroy-method="close"> -->
+<!-- 		<property name="driverClassName" value="com.ibm.db2.jcc.DB2Driver" /> -->
+<!-- 		<property name="url" value="${opt.dev.database.url.uniA}" /> -->
+<!-- 		<property name="username" value="${opt.dev.db.user.uniA}" /> -->
+<!-- 		<property name="password" value="${opt.dev.db.pwd.uniA}" /> -->
+<!-- 		<property name="maxIdle" value="10" /> -->
+<!-- 		<property name="maxActive" value="100" /> -->
+<!-- 		<property name="maxWait" value="10000" /> -->
+<!-- 		<property name="defaultAutoCommit" value="false" /> -->
+<!-- 	</bean> -->
+
+
+
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+	<context:component-scan base-package="com.csc.fsg.opt.writers" />
+	<tx:annotation-driven transaction-manager="transactionManager" />
+	<batch:job id="simpleJob" abstract="true" job-repository="jobRepository"
+		restartable="false">
+		<batch:listeners>
+			<batch:listener ref="EmailerJobListener" />
+		</batch:listeners>
+	</batch:job>
+
+	<bean id="simpleStep"
+		class="org.springframework.batch.core.step.item.SimpleStepFactoryBean"
+		abstract="true">
+		<property name="transactionManager" ref="transactionManager" />
+		<property name="jobRepository" ref="jobRepository" />
+	</bean>
+
+	<bean id="simpleTaskletStep" class="org.springframework.batch.core.step.tasklet.TaskletStep"
+		abstract="true">
+		<property name="transactionManager" ref="transactionManager" />
+		<property name="jobRepository" ref="jobRepository" />
+	</bean>
+
+	<bean id="EmailerJobListener"
+		class="com.csc.csa.loader.listener.EmailingJobExecutionListener">
+		<property name="mailSender" ref="mailSender" />
+		<property name="templateMessage" ref="defaultTemplateMessage" />
+		<property name="report" ref="jobReport" />
+		<property name="jobOperator" ref="jobOperator" />
+	</bean>
+
+	<bean id="mailSender" class="org.springframework.mail.javamail.JavaMailSenderImpl">
+		<property name="host" value="relay.csc.com" />
+	</bean>
+
+	<!-- this is a template message that we can pre-load with default state -->
+	<bean id="defaultTemplateMessage" class="org.springframework.mail.SimpleMailMessage">
+		<property name="to" value="${mail.to}" />
+		<property name="from" value="opt-loader-batch@do.not.reply" />
+		<property name="subject" value="${mail.subject}" />
+	</bean>
+	<bean name="jobReport" class="com.csc.csa.loader.ErrorJobReport" />
+</beans>

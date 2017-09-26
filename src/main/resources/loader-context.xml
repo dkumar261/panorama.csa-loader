@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:batch="http://www.springframework.org/schema/batch" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xsi:schemaLocation="http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-3.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd
+		http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.0.xsd
+		http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop.xsd">
+
+	<import resource="global-context.xml" />
+	<context:annotation-config/>
+	<context:component-scan base-package="com.csc.csa.loader"/>
+	<batch:job id="loaderJob" parent="simpleJob">
+
+		<batch:step id="lookForLoaderInputFileStep" parent="simpleTaskletStep">
+			<batch:tasklet ref="lookForLoaderInputFileTasklet" />
+			<batch:next on="PANO INPUT FILE" to="readWriteOpForML" />
+			<batch:end on="*" />
+		</batch:step>
+		<batch:step id="readWriteOpForML" next="archiveLoaderInputFileStep"
+			parent="simpleStep">
+			<batch:tasklet>
+				<batch:chunk reader="metlifeFileItemReader" writer="metlifepolicyWriter"
+					skip-limit="50000">
+					<batch:skippable-exception-classes>
+						<batch:include class="java.lang.Throwable" />
+					</batch:skippable-exception-classes>
+				</batch:chunk>
+				<batch:listeners>
+					<batch:listener ref="SkipListener" />
+				</batch:listeners>
+			</batch:tasklet>
+		</batch:step>
+
+		<batch:step id="archiveLoaderInputFileStep" parent="simpleTaskletStep">
+			<batch:tasklet ref="archiveLoaderInputFileTasklet" />
+		</batch:step>
+	</batch:job>
+
+	<bean id="archiveLoaderInputFileTasklet"
+		class="com.csc.csa.loader.task.MoveProcessingFileToArchieveTasklet">
+		<property name="fileHelper" ref="inputLoaderFileHelper" />
+	</bean>
+	<bean id="lookForLoaderInputFileTasklet"
+		class="com.csc.csa.loader.task.MoveInputFileToProcessingTasklet">
+		<property name="fileHelper" ref="inputLoaderFileHelper" />
+		<property name="report" ref="jobReport" />
+	</bean>
+
+<!-- 	<bean name="inputLoaderFileHelper" class="com.csc.csa.loader.helper.InputResourceFileHelper"> -->
+<!-- 		<property name="sourceFolderPano" value="${opt.loader.pano.sourceFolder}" /> -->
+
+<!-- 		<property name="destinationFolder" value="${opt.loader.destinationFolder}" /> -->
+<!-- 		<property name="archiveFolder" value="${opt.loader.archiveFolder}" /> -->
+<!-- 	</bean> -->
+
+	<bean id="metlifeFileItemReader" class="org.springframework.batch.item.file.FlatFileItemReader">
+		<property name="resource">
+			<util:property-path path="inputLoaderFileHelper.destinationFileResource" />
+		</property>
+		<property name="lineMapper" ref="metLifeFileMapper" />
+	</bean>
+
+
+	<bean id="loaderPartyTokenizer"
+		class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+		<property name="delimiter" value="|" />
+		<property name="names"
+			value="OperationFlag,Company,PolicyNumber,PolicyStatus,ProductType,
+		plan,partyType,RelationRole,agentNumber,GenderId,GovID,SearchDob,SearchLastName,Suffix,Prefix,
+		SearchFirstName,NoOfAddress,Add1Type,Add1Ln1,Add1Ln2,Add1Ln3,Add1Ln4,Add1City,Add1State,
+		Add1Country,Add1Zip,Add2Type,Add2Ln1,Add2Ln2,Add2Ln3,Add2Ln4,Add2City,Add2State,Add2Country,
+		Add2Zip,Add3Type,Add3Ln1,Add3Ln2,Add3Ln3,Add3Ln4,Add3City,Add3State,Add3Country,Add3Zip,System,GroupBilling,ProductKey,FormNumber,partyKey,ContractId" />
+	</bean>
+	<bean id="loaderHeaderTokenizer"
+		class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+		<property name="delimiter" value="|" />
+		<property name="names" value="OperationFlag,dummyStr,cycleDate,dummyStr" />
+	</bean>
+	<bean id="loaderTrailerTokenizer"
+		class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+		<property name="delimiter" value="|" />
+		<property name="names" value="OperationFlag,dummyStr,totalRecs,dummyStr" />
+	</bean>
+
+	<bean id="metLifeFileMapper"
+		class="org.springframework.batch.item.file.mapping.PatternMatchingCompositeLineMapper">
+		<property name="tokenizers">
+			<map>
+				<entry key="AAHDR*" value-ref="loaderHeaderTokenizer" />
+				<entry key="ZZTRL*" value-ref="loaderTrailerTokenizer" />
+				<entry key="*" value-ref="loaderPartyTokenizer" />
+			</map>
+		</property>
+		<property name="fieldSetMappers">
+			<map>
+				<entry key="*" value-ref="metLifePolicyDataMapper" />
+			</map>
+		</property>
+	</bean>
+
+<!-- 	<bean id="metlifepolicyWriter" -->
+<!-- 		class="com.csc.csa.loader.writer.PanoramaCustomPolicyDataWriter"> -->
+<!-- 		<property name="dataSource" ref="dataSource" /> -->
+<!-- 		<property name="dataSourceUnia" ref="dataSourceUnia" /> -->
+<!-- 	</bean> -->
+	<bean name="SkipListener" class="com.csc.csa.loader.listener.PolicyRecordReadListener">
+		<property name="report" ref="jobReport" />
+	</bean>
+	<aop:config>
+		<aop:pointcut id="logPointcut"
+			expression="execution(* com.csc.fsg.opt.writers.*.*(..))" />
+		<aop:aspect id="logAspect" ref="loggingInterceptor">
+			<aop:after-throwing pointcut-ref="logPointcut"
+				method="afterThrowing" throwing="ex" />
+		</aop:aspect>
+	</aop:config>
+	<bean id="loggingInterceptor" class="com.csc.csa.loader.listener.LoggingInterceptor">
+		<property name="report" ref="jobReport" />
+	</bean>
+	<bean id="policyDtlTokenizer"
+		class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+		<property name="delimiter" value="|" />
+		<property name="names"
+			value="OperationFlag,Company,ProductType,PolicyNumber,PolicyStatus,agentNumber,,,,,,,," />
+	</bean>
+	<bean id="cltRoleTokenizer"
+		class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+		<property name="delimiter" value="|" />
+		<property name="names"
+			value="OperationFlag,Company,PolicyNumber,partyKey,RelationRole,,,,,,,,," />
+	</bean>
+	<bean id="polAgentTokenizer"
+		class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+		<property name="delimiter" value="|" />
+		<property name="names"
+			value="OperationFlag,Company,PolicyNumber,agentNumberLong,agentNumber,agentStatus,partyKey,,,,,,," />
+	</bean>
+	<bean id="cltDtlTokenizer"
+		class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+		<property name="delimiter" value="|" />
+		<property name="names"
+			value="OperationFlag,Company,partyKey,partyType,SearchLastName,SearchFirstName,GenderId,,,,,GovID,SearchDob," />
+	</bean>
+	<bean id="cltAddrTokenizer"
+		class="org.springframework.batch.item.file.transform.DelimitedLineTokenizer">
+		<property name="delimiter" value="|" />
+		<property name="names"
+			value="OperationFlag,Company,partyKey,Add1Type,Add1Ln1,Add1Ln2,Add1Ln3,Add1Ln4,Add1City,Add1State,Add1Zip,Add1Country,," />
+	</bean>
+	<bean id="utilHelper" class="com.csc.csa.loader.util.UtilHelper">
+		<property name="nationProps" ref="nationProps" />
+		<property name="stateProps" ref="stateProps" />
+		<property name="policyStatusProps" ref="policyStatusProps" />
+		<property name="policyProductCodeProps" ref="policyProductCodeProps" />
+		<property name="systemsProps" ref="systemsProps" />
+	</bean>
+	<util:properties id="nationProps" location="classpath:nations.properties" />
+	<util:properties id="stateProps" location="classpath:state.properties" />
+	<util:properties id="policyStatusProps" location="classpath:policyStatus.properties" />
+	<util:properties id="policyProductCodeProps"
+		location="classpath:PolicyProductCode.properties" />
+	<util:properties id="systemsProps" location="classpath:systems.properties" />
+</beans>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE log4j:configuration SYSTEM "log4j.dtd">
+<log4j:configuration xmlns:log4j="http://jakarta.apache.org/log4j/">  
+
+  <appender name="debugAppender" class="com.csc.csa.loader.util.NewLogForEachRunFileAppender">
+		<param name="File" value="./logs/loader-Log" />		
+		<param name="Append" value="true"/>
+		<param name="Threshold" value="DEBUG"/>
+		<layout class="org.apache.log4j.PatternLayout">
+			<param name="ConversionPattern" value="%d{HH:mm:ss:SSS} - %p - %C{1} - %m%n"/>
+		</layout>
+	</appender>  
+    
+    <appender name="ErrorLogAppender" class="com.csc.csa.loader.util.NewLogForEachRunFileAppender">
+		<param name="File" value="./logs/errorLog.txt" />
+		<param name="Append" value="true"/>
+		<param name="Threshold" value="ERROR"/>
+		<layout class="org.apache.log4j.PatternLayout">
+			<param name="ConversionPattern" value="%d{HH:mm:ss:SSS} - %p - %C{1} - %m%n"/>
+		</layout>
+	</appender>
+	<appender name="AuditLogAppender" class="com.csc.csa.loader.util.NewLogForEachRunFileAppender">
+		<param name="File" value="./logs/auditLog.txt" />
+		<param name="Append" value="true"/>
+		<param name="Threshold" value="INFO"/>
+		<layout class="org.apache.log4j.PatternLayout">
+			<param name="ConversionPattern" value="%d{HH:mm:ss:SSS} - %p - %C{1} - %m%n"/>
+		</layout>
+	</appender>	
+    <logger name="com.csc.fsg.opt.writers.LifeCommCustomPolicyDataWriter">
+        <appender-ref ref="AuditLogAppender"/>
+    </logger>
+    <logger name="com.csc.fsg.opt.util.listeners.EmailingJobExecutionListener">
+        <appender-ref ref="AuditLogAppender"/>
+    </logger>    
+    <logger name="org.springframework.batch" >
+		<level value="DEBUG" />
+	</logger>
+	<logger name="org.springframework" >
+		<level value="DEBUG" />
+	</logger>
+	<logger name="com.csc.csa.loader" >
+		<level value="DEBUG" />
+	</logger>    
+    <root>    
+	 	<priority value ="DEBUG"/>    
+	 	<appender-ref ref="debugAppender"/> 
+	 	<appender-ref ref="ErrorLogAppender"/> 
+ 	</root>
+ </log4j:configuration> 
+
