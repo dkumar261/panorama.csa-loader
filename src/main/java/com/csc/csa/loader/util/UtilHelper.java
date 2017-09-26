@@ -9,6 +9,7 @@ public class UtilHelper {
 	private static Map<Integer, Integer> agentStatusMap=new HashMap<>();
 	private static Map<String, Integer> addressMap=new HashMap<>();
 	private static Map<String, Integer> roleCodeMapZLife=new HashMap<>();
+	
 	private static Properties nationProps;
 	private static Properties stateProps;
 	private static Properties policyStatusProps;

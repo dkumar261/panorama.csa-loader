@@ -101,8 +101,7 @@ public class InputResourceFileHelper {
 
 	public Resource getArchiveFileResource() {
 		if (archiveFile==null) return null;
-		FileSystemResource fsr = new FileSystemResource(archiveFile);
-		return fsr;
+		return new FileSystemResource(archiveFile);
 	}
 
 	public File getSourceFile() {
