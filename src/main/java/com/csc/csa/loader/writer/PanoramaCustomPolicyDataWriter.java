@@ -28,8 +28,10 @@ import com.csc.csa.loader.util.Constants;
 
 /**
  * 
- * @author dkumar261 This class is for customized csA Loader for panorama , after populating data object from extract and as per given operation
- * it executes sql query and save/update/delete into database.
+ * @author dkumar261 
+ * 
+ * This class is for customized csA Loader for panorama , after populating data object from extract and as per given operation
+ * it executes sql query and save/update/delete into database as per given flag in extract file from first position.
  * 
  */
 
@@ -43,10 +45,11 @@ public class PanoramaCustomPolicyDataWriter implements ItemWriter<Party> {
 	private NamedParameterJdbcTemplate jdbcTemplate;
 	
 	private NamedParameterJdbcTemplate jdbcTemplateUnia;
-	private String extractType = System.getProperty(Constants.EXTRACT_TYPE);
+	
 	private String policyNumber;
 	private String policyNumberforClientDeletes;
 	private List<String> clientListToDelete = new ArrayList<>();
+	
 	private static final Log logger = LogFactory.getLog(Constants.AUDIT_LOGGER);
 
 	public void write(List<? extends Party> items) {
@@ -138,7 +141,7 @@ public class PanoramaCustomPolicyDataWriter implements ItemWriter<Party> {
 		String clientID = checkIfPartyPresent(party);
 		if (!isNullOREmpty(clientID)) {
 			partyPresent = true;
-			party.setClientID(clientID);// CSCOPT-1568
+			party.setClientID(clientID);
 		} else {
 			partyPresent = false;
 		}
@@ -335,7 +338,7 @@ public class PanoramaCustomPolicyDataWriter implements ItemWriter<Party> {
 	}
 
 	@Transactional
-	private void deleteAllData(SqlParameterSource params, String whereClause, Portfolio port,
+	public void deleteAllData(SqlParameterSource params, String whereClause, Portfolio port,
 			List<String> clientIDList) {// CSCOPT-1808
 		try {
 			String whereClause2 = "WHERE CONTRACT_ID = '" + port.getContractID() + "'";
