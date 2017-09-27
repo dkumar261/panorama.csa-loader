@@ -1,0 +1,8 @@
+xcopy D:\Jenkins\workspace\Track-09\uniA_extract_loader\src\main\resources\sandbox-loader.properties \\20.15.78.227\unia-loader\policy-loader\ /Y
+xcopy D:\Jenkins\workspace\Track-09\uniA_extract_loader\target\unia-loader-1.0.0.jar \\20.15.78.227\unia-loader\policy-loader\lib\ /Y
+
+@echo off
+set path=C:\Program Files\Java\jdk1.7.0_76\bin\;%path%
+java -version
+
+java -jar E:\csA-Loader-SIT\csaloader.jar
